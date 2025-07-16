@@ -10,7 +10,6 @@ import Navbar from "./components/Navbar";
 import ProfileSetupWrapper from "./components/ProfileSetupWrapper";
 import { Toaster } from "react-hot-toast";
 import AnimatedBackground from "./components/AnimatedBackground";
-import SplashScreenWrapper from "./components/SplashScreenWrapper";
 
 const geistSans = GeistSans;
 
@@ -75,27 +74,25 @@ export default function RootLayout({
             <AdminProvider>
               <AchievementProvider>
                 <NotificationProvider>
-                  <SplashScreenWrapper>
-                    {/* Global Animated Background */}
-                    <AnimatedBackground variant="memes" intensity="medium" className="fixed inset-0 z-[1]" />
-                    <div className="relative z-[5]">
-                      <Navbar />
-                      <main className="relative z-[5]">{children}</main>
-                    </div>
-                    <ProfileSetupWrapper />
-                    <Toaster
-                      position="bottom-right"
-                      toastOptions={{
-                        className: "bg-secondary text-text-primary border border-primary/20",
-                        style: {
-                          background: "var(--color-secondary)",
-                          color: "var(--color-text-primary)",
-                          border: "1px solid var(--color-primary-light)",
-                        },
-                        duration: 3000,
-                      }}
-                    />
-                  </SplashScreenWrapper>
+                  {/* Global Animated Background */}
+                  <AnimatedBackground variant="memes" intensity="medium" className="fixed inset-0 z-[1]" />
+                  <div className="relative z-[5]">
+                    <Navbar />
+                    <main className="relative z-[5]">{children}</main>
+                  </div>
+                  <ProfileSetupWrapper />
+                  <Toaster
+                    position="bottom-right"
+                    toastOptions={{
+                      className: "bg-secondary text-text-primary border border-primary/20",
+                      style: {
+                        background: "var(--color-secondary)",
+                        color: "var(--color-text-primary)",
+                        border: "1px solid var(--color-primary-light)",
+                      },
+                      duration: 3000,
+                    }}
+                  />
                 </NotificationProvider>
               </AchievementProvider>
             </AdminProvider>
