@@ -135,24 +135,26 @@ export class LeaderboardService {
       // Get all user profiles first
       const q = query(collection(db, 'userProfiles'), limit(limitCount * 2)); // Get more to filter
       const querySnapshot = await getDocs(q);
-      const userEntries: LeaderboardEntry[] = [];
 
-      // For each user, get their total likes on active content
-      for (const doc of querySnapshot.docs) {
+      const promises = querySnapshot.docs.map(async (doc) => {
         const profile = doc.data();
         const totalLikesReceived = await ContentCountService.getTotalLikesReceived(doc.id);
 
-        if (totalLikesReceived > 0) { // Only include users with likes
-          userEntries.push({
+        if (totalLikesReceived > 0) {
+          return {
             userId: doc.id,
             nickname: profile.nickname,
             avatar: profile.avatar,
             rank: 0, // Will be set after sorting
             score: totalLikesReceived,
             change: 0
-          });
+          } as LeaderboardEntry;
         }
-      }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      const userEntries = results.filter((entry): entry is LeaderboardEntry => entry !== null);
 
       // Sort by total likes received and assign ranks
       userEntries.sort((a, b) => b.score - a.score);
@@ -173,24 +175,26 @@ export class LeaderboardService {
       // Get all user profiles first
       const q = query(collection(db, 'userProfiles'), limit(limitCount * 2)); // Get more to filter
       const querySnapshot = await getDocs(q);
-      const userEntries: LeaderboardEntry[] = [];
 
-      // For each user, get their active meme count
-      for (const doc of querySnapshot.docs) {
+      const promises = querySnapshot.docs.map(async (doc) => {
         const profile = doc.data();
         const activeMemeCount = await ContentCountService.getActiveMemeCount(doc.id);
 
-        if (activeMemeCount > 0) { // Only include users with active memes
-          userEntries.push({
+        if (activeMemeCount > 0) {
+          return {
             userId: doc.id,
             nickname: profile.nickname,
             avatar: profile.avatar,
             rank: 0, // Will be set after sorting
             score: activeMemeCount,
             change: 0
-          });
+          } as LeaderboardEntry;
         }
-      }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      const userEntries = results.filter((entry): entry is LeaderboardEntry => entry !== null);
 
       // Sort by active meme count and assign ranks
       userEntries.sort((a, b) => b.score - a.score);
@@ -211,24 +215,26 @@ export class LeaderboardService {
       // Get all user profiles first
       const q = query(collection(db, 'userProfiles'), limit(limitCount * 2)); // Get more to filter
       const querySnapshot = await getDocs(q);
-      const userEntries: LeaderboardEntry[] = [];
 
-      // For each user, get their active comment count
-      for (const doc of querySnapshot.docs) {
+      const promises = querySnapshot.docs.map(async (doc) => {
         const profile = doc.data();
         const activeCommentCount = await ContentCountService.getActiveCommentCount(doc.id);
 
-        if (activeCommentCount > 0) { // Only include users with active comments
-          userEntries.push({
+        if (activeCommentCount > 0) {
+          return {
             userId: doc.id,
             nickname: profile.nickname,
             avatar: profile.avatar,
             rank: 0, // Will be set after sorting
             score: activeCommentCount,
             change: 0
-          });
+          } as LeaderboardEntry;
         }
-      }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      const userEntries = results.filter((entry): entry is LeaderboardEntry => entry !== null);
 
       // Sort by active comment count and assign ranks
       userEntries.sort((a, b) => b.score - a.score);
