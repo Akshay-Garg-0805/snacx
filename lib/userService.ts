@@ -65,23 +65,42 @@ export class UserService {
     }
   }
 
-  // Get user profile by nickname
-  static async getUserByNickname(nickname: string): Promise<UserProfile | null> {
+  // Get multiple users by nicknames (batched)
+  static async getUsersByNicknames(nicknames: string[]): Promise<Map<string, UserProfile>> {
     try {
-      const q = query(
-        collection(db, this.COLLECTION_NAME),
-        where('nickname', '==', nickname),
-        limit(1)
-      );
+      if (!nicknames.length) return new Map();
 
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        return querySnapshot.docs[0].data() as UserProfile;
+      // Normalize and dedup nicknames
+      const normalizedNicknames = [...new Set(nicknames.map(n => n.toLowerCase().trim()))];
+      const userMap = new Map<string, UserProfile>();
+
+      // Firestore 'in' query limit is 30
+      const chunkSize = 30;
+      const chunks = [];
+
+      for (let i = 0; i < normalizedNicknames.length; i += chunkSize) {
+        chunks.push(normalizedNicknames.slice(i, i + chunkSize));
       }
-      return null;
+
+      const promises = chunks.map(async (chunk) => {
+        const q = query(
+          collection(db, this.COLLECTION_NAME),
+          where('nickname', 'in', chunk)
+        );
+
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+          const data = doc.data() as UserProfile;
+          // Ensure we map back to the nickname used for lookup (though data.nickname should match)
+          userMap.set(data.nickname, { ...data, uid: doc.id });
+        });
+      });
+
+      await Promise.all(promises);
+      return userMap;
     } catch (error) {
-      console.error('Error getting user by nickname:', error);
-      return null;
+      console.error('Error getting users by nicknames:', error);
+      return new Map();
     }
   }
 

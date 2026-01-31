@@ -48,42 +48,50 @@ export class MentionService {
       
       if (mentionedUsernames.length === 0) return;
 
-      // Get user profiles for mentioned usernames
-      const mentionPromises = mentionedUsernames.map(async (username) => {
-        try {
-          const userProfile = await UserService.getUserByNickname(username);
-          if (userProfile && userProfile.uid !== mentionerId) {
-            // Create mention record
-            const mention: Omit<Mention, 'id'> = {
-              mentionerId,
-              mentionerName,
-              mentionedUserId: userProfile.uid,
-              mentionedUserName: userProfile.nickname,
-              contentType,
-              contentId,
-              memeId,
-              memeTitle,
-              text,
-              timestamp: Date.now()
-            };
+      // Get user profiles for mentioned usernames (batched)
+      const userProfilesMap = await UserService.getUsersByNicknames(mentionedUsernames);
 
-            await addDoc(collection(db, this.COLLECTION_NAME), mention);
+      const processingPromises = [];
 
-            // Create notification
-            await NotificationService.createMentionNotification(
-              mentionerId,
-              userProfile.uid,
-              memeId,
-              memeTitle,
-              contentType
-            );
-          }
-        } catch (error) {
-          console.error(`Error processing mention for ${username}:`, error);
+      for (const username of mentionedUsernames) {
+        // Nicknames in DB are stored in lowercase
+        const userProfile = userProfilesMap.get(username.toLowerCase());
+
+        if (userProfile && userProfile.uid !== mentionerId) {
+          processingPromises.push((async () => {
+            try {
+              // Create mention record
+              const mention: Omit<Mention, 'id'> = {
+                mentionerId,
+                mentionerName,
+                mentionedUserId: userProfile.uid,
+                mentionedUserName: userProfile.nickname,
+                contentType,
+                contentId,
+                memeId,
+                memeTitle,
+                text,
+                timestamp: Date.now()
+              };
+
+              await addDoc(collection(db, this.COLLECTION_NAME), mention);
+
+              // Create notification
+              await NotificationService.createMentionNotification(
+                mentionerId,
+                userProfile.uid,
+                memeId,
+                memeTitle,
+                contentType
+              );
+            } catch (error) {
+              console.error(`Error processing mention for ${username}:`, error);
+            }
+          })());
         }
-      });
+      }
 
-      await Promise.all(mentionPromises);
+      await Promise.all(processingPromises);
     } catch (error) {
       console.error('Error processing mentions:', error);
     }
