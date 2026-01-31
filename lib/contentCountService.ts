@@ -8,6 +8,7 @@ import {
   getCountFromServer
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { UserService } from './userService';
 
 export class ContentCountService {
   
@@ -30,6 +31,13 @@ export class ContentCountService {
   // Count active comments made by a user
   static async getActiveCommentCount(userId: string): Promise<number> {
     try {
+      // FAST PATH: Check user profile stats first
+      const userProfile = await UserService.getUserProfile(userId);
+      if (userProfile?.stats && typeof userProfile.stats.commentsMade === 'number') {
+        return userProfile.stats.commentsMade;
+      }
+
+      // SLOW PATH: Full collection scan (Migration/Fallback)
       const q = query(collection(db, 'memes'));
       const querySnapshot = await getDocs(q);
       
@@ -43,6 +51,13 @@ export class ContentCountService {
         const userComments = comments.filter((comment: any) => comment.userId === userId);
         commentCount += userComments.length;
       });
+
+      // REPAIR: Update the user profile so subsequent calls are fast
+      try {
+        await UserService.updateUserStats(userId, { commentsMade: commentCount });
+      } catch (updateError) {
+        console.warn('Failed to update user stats during read-repair:', updateError);
+      }
       
       return commentCount;
     } catch (error) {

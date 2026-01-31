@@ -9,7 +9,8 @@ import {
   getDocs,
   orderBy,
   limit,
-  serverTimestamp
+  serverTimestamp,
+  increment
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { UserProfile, UserStats, getRandomAvatar } from '../types/user';
@@ -132,6 +133,7 @@ export class UserService {
           totalLikes: 0,
           totalComments: 0,
           totalViews: 0,
+          commentsMade: 0,
           joinedAt: now,
         },
         isProfileComplete: true,
@@ -205,16 +207,15 @@ export class UserService {
   static async incrementUserStats(
     uid: string, 
     field: keyof Omit<UserStats, 'joinedAt'>, 
-    increment: number = 1
+    amount: number = 1
   ): Promise<void> {
     try {
-      const profile = await this.getUserProfile(uid);
-      if (!profile) return;
+      const updateData = {
+        [`stats.${field}`]: increment(amount),
+        updatedAt: Date.now(),
+      };
 
-      const currentValue = profile.stats[field] as number;
-      const newValue = currentValue + increment;
-
-      await this.updateUserStats(uid, { [field]: newValue } as Partial<UserStats>);
+      await updateDoc(doc(db, this.COLLECTION_NAME, uid), updateData as any);
     } catch (error) {
       console.error('Error incrementing user stats:', error);
       throw error;

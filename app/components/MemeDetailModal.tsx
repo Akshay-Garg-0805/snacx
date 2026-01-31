@@ -78,19 +78,19 @@ export default function MemeDetailModal({
   const [commentAuthorProfiles, setCommentAuthorProfiles] = useState<{[userId: string]: UserProfile}>({});
   const [authorProfile, setAuthorProfile] = useState<UserProfile | null>(null);
   const [cloudinaryFailed, setCloudinaryFailed] = useState(false);
-  
+
   // Check if screen is mobile size
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     // Initial check
     checkIfMobile();
-    
+
     // Add event listener for window resize
     window.addEventListener('resize', checkIfMobile);
-    
+
     // Cleanup
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
@@ -138,7 +138,7 @@ export default function MemeDetailModal({
 
     loadCommentAuthorProfiles();
   }, [localComments]);
-  
+
   // Close modal when clicking outside or pressing Escape
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -192,6 +192,9 @@ export default function MemeDetailModal({
         id,
         title
       );
+
+      // Update user stats (comments made)
+      await UserService.incrementUserStats(user.uid, 'commentsMade', 1);
 
       // Track achievements for commenting
       await AchievementService.trackUserAction(user.uid, 'comments_made');
@@ -283,6 +286,9 @@ export default function MemeDetailModal({
       setLocalComments(updatedComments);
       if (onCommentUpdate) onCommentUpdate(updatedComments);
 
+      // Update user stats (comments made)
+      await UserService.incrementUserStats(comment.userId, 'commentsMade', -1);
+
       // Decrement author's total comments stat if comment was from another user
       if (authorId !== comment.userId) {
         await UserService.incrementUserStats(authorId, 'totalComments', -1);
@@ -338,12 +344,12 @@ export default function MemeDetailModal({
               />
             </svg>
           </button>
-          
+
           {/* Meme side */}
-          <div 
+          <div
             className={`w-full ${
-              isMobile 
-                ? 'max-h-[40vh] sm:max-h-[50vh]' 
+              isMobile
+                ? 'max-h-[40vh] sm:max-h-[50vh]'
                 : 'md:w-[55%] md:max-h-[90vh]'
             } bg-card relative overflow-hidden flex flex-col`}
           >
@@ -375,7 +381,7 @@ export default function MemeDetailModal({
                 />
               )}
             </div>
-            
+
             <div className="p-3 sm:p-4 bg-card border-t border-primary/10">
               <h2 className="text-base sm:text-xl font-bold text-foreground mb-1 sm:mb-2">
                 <HashtagText
@@ -417,7 +423,7 @@ export default function MemeDetailModal({
                     </span>
                   )}
                 </div>
-                
+
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -444,13 +450,13 @@ export default function MemeDetailModal({
               </div>
             </div>
           </div>
-          
+
           {/* Comments side */}
           <div className={`w-full ${isMobile ? '' : 'md:w-[45%]'} flex flex-col ${isMobile ? 'max-h-[50vh]' : 'md:max-h-[90vh]'}`}>
             <div className="p-3 sm:p-4 border-b border-primary/10 bg-background">
               <h3 className="text-base sm:text-lg font-medium text-foreground">Comments</h3>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-4">
               {localComments.length === 0 ? (
                 <div className="text-center py-6 sm:py-8">
@@ -493,7 +499,7 @@ export default function MemeDetailModal({
                 ))
               )}
             </div>
-            
+
             <div className="p-3 sm:p-4 border-t border-primary/10 bg-background">
               <form onSubmit={handleComment} className="flex space-x-2">
                 <MentionAutocomplete
