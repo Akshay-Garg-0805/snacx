@@ -422,13 +422,31 @@ export class LeaderboardService {
       const usersSnapshot = await getDocs(usersQuery);
       const entries: LeaderboardEntry[] = [];
 
-      for (const userDoc of usersSnapshot.docs) {
-        const userData = userDoc.data();
-        const userId = userDoc.id;
+      const userIds: string[] = [];
+      const userMap = new Map<string, any>();
+
+      usersSnapshot.docs.forEach(doc => {
+        userIds.push(doc.id);
+        userMap.set(doc.id, doc.data());
+      });
+
+      // Fetch all required stats in parallel batches
+      const [followStatsMap, activeStatsMap] = await Promise.all([
+        FollowService.getBatchFollowStats(userIds),
+        ContentCountService.getBatchUserActiveStats(userIds)
+      ]);
+
+      for (const userId of userIds) {
+        const userData = userMap.get(userId);
 
         try {
-          const followStats = await FollowService.getFollowStats(userId);
-          const activeStats = await ContentCountService.getUserActiveStats(userId);
+          const followStats = followStatsMap.get(userId) || { followersCount: 0, followingCount: 0 };
+          const activeStats = activeStatsMap.get(userId) || {
+            activeMemes: 0,
+            activeComments: 0,
+            totalLikes: 0,
+            totalComments: 0
+          };
 
           // Calculate social score: followers * 2 + following * 0.5 + likes * 0.1 + comments * 0.2
           const socialScore = Math.round(

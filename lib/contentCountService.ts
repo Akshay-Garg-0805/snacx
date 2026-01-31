@@ -141,6 +141,72 @@ export class ContentCountService {
     }
   }
 
+  // Get comprehensive user stats for multiple users efficiently
+  static async getBatchUserActiveStats(userIds: string[]): Promise<Map<string, {
+    activeMemes: number;
+    activeComments: number;
+    totalLikes: number;
+    totalComments: number;
+  }>> {
+    try {
+      // Fetch all memes once
+      // Note: This optimization assumes fetching all memes is cheaper than N*4 queries
+      // where N is the number of users in the leaderboard (limit 1000).
+      // Given getActiveCommentCount previously scanned all memes for EACH user,
+      // this is guaranteed to be O(1) vs O(N) in terms of "Scan All Memes" operations.
+      const q = query(collection(db, 'memes'));
+      const querySnapshot = await getDocs(q);
+
+      const statsMap = new Map<string, {
+        activeMemes: number;
+        activeComments: number;
+        totalLikes: number;
+        totalComments: number;
+      }>();
+
+      // Initialize map for requested users
+      const userIdSet = new Set(userIds);
+      userIds.forEach(userId => {
+        statsMap.set(userId, {
+          activeMemes: 0,
+          activeComments: 0,
+          totalLikes: 0,
+          totalComments: 0
+        });
+      });
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const authorId = data.authorId;
+        const likes = data.likes || [];
+        const comments = data.comments || []; // Array of { userId: string, ... }
+
+        // Update stats for the author (if they are in our target list)
+        if (userIdSet.has(authorId)) {
+          const stats = statsMap.get(authorId)!;
+          stats.activeMemes += 1;
+          stats.totalLikes += likes.length;
+          stats.totalComments += comments.length;
+        }
+
+        // Update stats for commenters (if they are in our target list)
+        comments.forEach((comment: any) => {
+          const commenterId = comment.userId;
+          if (userIdSet.has(commenterId)) {
+            const stats = statsMap.get(commenterId)!;
+            stats.activeComments += 1;
+          }
+        });
+      });
+
+      return statsMap;
+    } catch (error) {
+      console.error('Error getting batch user active stats:', error);
+      // Return empty map on error
+      return new Map();
+    }
+  }
+
   // Check if user has ever uploaded a meme (for first_meme achievement)
   static async hasEverUploadedMeme(userId: string): Promise<boolean> {
     try {

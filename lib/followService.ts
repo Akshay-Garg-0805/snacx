@@ -10,7 +10,8 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  documentId
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Follow, FollowStats } from '../types/follow';
@@ -162,6 +163,52 @@ export class FollowService {
     } catch (error) {
       console.error('Error getting follow stats:', error);
       return { followersCount: 0, followingCount: 0 };
+    }
+  }
+
+  // Get follow stats for multiple users efficiently
+  static async getBatchFollowStats(userIds: string[]): Promise<Map<string, FollowStats>> {
+    try {
+      const statsMap = new Map<string, FollowStats>();
+
+      // Initialize with default values
+      userIds.forEach(id => {
+        statsMap.set(id, { followersCount: 0, followingCount: 0 });
+      });
+
+      // Firestore 'in' query supports up to 10 values
+      const chunkSize = 10;
+      const chunks = [];
+      for (let i = 0; i < userIds.length; i += chunkSize) {
+        chunks.push(userIds.slice(i, i + chunkSize));
+      }
+
+      const promises = chunks.map(async (chunk) => {
+        if (chunk.length === 0) return;
+
+        const q = query(
+          collection(db, this.FOLLOW_STATS_COLLECTION),
+          where(documentId(), 'in', chunk)
+        );
+
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          if (doc.exists()) {
+            statsMap.set(doc.id, doc.data() as FollowStats);
+          }
+        });
+      });
+
+      await Promise.all(promises);
+      return statsMap;
+    } catch (error) {
+      console.error('Error getting batch follow stats:', error);
+      // Return initialized map (zeros) on error
+      const statsMap = new Map<string, FollowStats>();
+      userIds.forEach(id => {
+        statsMap.set(id, { followersCount: 0, followingCount: 0 });
+      });
+      return statsMap;
     }
   }
 
