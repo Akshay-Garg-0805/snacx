@@ -15,6 +15,7 @@ export interface UserStats {
   totalLikes: number;
   totalComments: number;
   totalViews: number;
+  commentsMade: number;
   followersCount?: number;
   followingCount?: number;
   joinedAt: number;

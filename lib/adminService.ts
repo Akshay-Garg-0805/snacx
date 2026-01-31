@@ -23,6 +23,7 @@ import {
   ADMIN_ROLE_PERMISSIONS,
   ADMIN_EMAILS 
 } from '../types/admin';
+import { UserService } from './userService';
 
 export class AdminService {
   private static readonly ADMIN_COLLECTION = 'adminUsers';
@@ -197,6 +198,9 @@ export class AdminService {
       
       // Update the post
       await updateDoc(postRef, { comments });
+
+      // Update user stats (comments made)
+      await UserService.incrementUserStats(commentUserId, 'commentsMade', -1);
 
       // Log the action
       await this.logAdminAction(
