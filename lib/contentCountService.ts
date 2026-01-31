@@ -4,7 +4,8 @@ import {
   where, 
   getDocs,
   doc,
-  getDoc
+  getDoc,
+  getCountFromServer
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -18,8 +19,8 @@ export class ContentCountService {
         where('authorId', '==', userId)
       );
       
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.size;
+      const snapshot = await getCountFromServer(q);
+      return snapshot.data().count;
     } catch (error) {
       console.error('Error counting active memes:', error);
       return 0;
